@@ -1,32 +1,32 @@
 /**
  * Netlify Scheduled Function — runs daily at 6:00 AM IST (00:30 UTC)
- * Sources: NewsAPI, GNews, RSS via rss2json (WIPO, Interpol, CBP, IP Watchdog, etc.)
- * Writes pre-built JSON to Netlify Blobs → served by get-news.mjs edge function
  *
- * Audit fixes applied:
- *  [P1] All 6 categories fetched in PARALLEL via Promise.allSettled
- *  [P2] AbortSignal.timeout(10_000) on ALL external fetch calls via safeFetch()
- *  [P3] Pool sorted by publishedAt DESC before sending to AI
- *  [S5] Response size guard (5 MB cap) before .json() on every call
- *  [S6] Multi-pass HTML sanitiser strips tags, entities, and dangerous URIs
- *  [S7] imageUrl validated to be http/https only before storing
- *  [S10] AI articleIndex bounds-checked before array access
- *  [S11] AI response validated: picks must be Array, length capped at 3
+ * Fixes applied in this version:
+ *  [F1] GNews 429 — sequential calls with 1s delay instead of parallel
+ *  [F2] RSS 422 — parse RSS feeds directly (no rss2json proxy needed)
+ *  [F3] Blobs MissingBlobsEnvironmentError — pass siteID + token explicitly
  */
 
 import { schedule } from "@netlify/functions";
 import { getStore }  from "@netlify/blobs";
 
+// ─── ENV ─────────────────────────────────────────────────────────────────────
 const NEWS_API_KEY  = process.env.NEWS_API_KEY;
 const GNEWS_API_KEY = process.env.GNEWS_API_KEY;
 const OPENAI_KEY    = process.env.OPENAI_API_KEY;
-const RSS2JSON_KEY  = process.env.RSS2JSON_KEY;
+// [F3] Blobs needs these when invoked outside of the normal build/schedule context
+const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
+const NETLIFY_TOKEN   = process.env.NETLIFY_TOKEN   || process.env.TOKEN;
 
-const FETCH_TIMEOUT_MS    = 10_000;
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const FETCH_TIMEOUT_MS    = 12_000;
 const MAX_RESPONSE_BYTES  = 5_242_880; // 5 MB
 const MAX_TITLE_LEN       = 300;
 const MAX_DESC_LEN        = 500;
+// [F1] Delay between GNews requests to avoid 429 on free tier
+const GNEWS_DELAY_MS      = 1_200;
 
+// ─── CATEGORIES ──────────────────────────────────────────────────────────────
 const CATEGORIES = [
   {
     id: "counterfeiting",
@@ -34,6 +34,7 @@ const CATEGORIES = [
     icon: "⚠️",
     newsApiQuery: "counterfeiting fake goods seized customs",
     gnewsQuery: "counterfeit goods seized",
+    // [F2] Direct RSS URLs — no proxy
     rssFeeds: [
       "https://www.cbp.gov/newsroom/rss-feeds/trade-news",
       "https://www.interpol.int/en/News-and-Events/News/rss",
@@ -45,7 +46,9 @@ const CATEGORIES = [
     icon: "🛡️",
     newsApiQuery: "brand protection anti-counterfeiting authentication label trademark",
     gnewsQuery: "brand protection trademark infringement",
-    rssFeeds: ["https://ipwatchdog.com/feed/"],
+    rssFeeds: [
+      "https://ipwatchdog.com/feed/",
+    ],
   },
   {
     id: "supply-chain",
@@ -53,15 +56,19 @@ const CATEGORIES = [
     icon: "🔗",
     newsApiQuery: "supply chain integrity traceability serialisation blockchain",
     gnewsQuery: "supply chain traceability product authentication",
-    rssFeeds: ["https://www.supplychaindive.com/feeds/news/"],
+    rssFeeds: [
+      "https://www.supplychaindive.com/feeds/news/",
+    ],
   },
   {
     id: "technology",
     label: "Authentication Technology",
     icon: "💡",
     newsApiQuery: "QR code NFC RFID PUF authentication product verification technology",
-    gnewsQuery: "anti-counterfeiting technology authentication QR NFC",
-    rssFeeds: ["https://www.technologyreview.com/feed/"],
+    gnewsQuery: "anti-counterfeiting technology authentication NFC",
+    rssFeeds: [
+      "https://www.technologyreview.com/feed/",
+    ],
   },
   {
     id: "regulation",
@@ -69,30 +76,32 @@ const CATEGORIES = [
     icon: "⚖️",
     newsApiQuery: "intellectual property trademark counterfeit regulation enforcement WTO WIPO",
     gnewsQuery: "intellectual property law counterfeit regulation",
-    rssFeeds: ["https://www.wipo.int/pressroom/en/articles/rss.xml"],
+    rssFeeds: [
+      "https://www.wipo.int/pressroom/en/articles/rss.xml",
+    ],
   },
   {
     id: "luxury",
     label: "Luxury, Pharma & Retail",
     icon: "💎",
     newsApiQuery: "luxury goods fake counterfeit pharma medicine retail fashion",
-    gnewsQuery: "counterfeit luxury pharma fake medicines retail",
-    rssFeeds: ["https://www.businessoffashion.com/rss"],
+    gnewsQuery: "counterfeit luxury pharma fake medicines",
+    rssFeeds: [
+      "https://www.businessoffashion.com/rss",
+    ],
   },
 ];
 
-// [S7] Only allow http/https image URLs
+// ─── SECURITY HELPERS ────────────────────────────────────────────────────────
+
 function sanitiseImageUrl(raw) {
   if (!raw || typeof raw !== "string") return null;
   try {
     const u = new URL(raw);
     return (u.protocol === "http:" || u.protocol === "https:") ? raw : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-// [S6] Multi-pass text sanitiser
 function sanitiseText(raw, maxLen = MAX_DESC_LEN) {
   if (!raw || typeof raw !== "string") return "";
   let s = raw;
@@ -100,13 +109,13 @@ function sanitiseText(raw, maxLen = MAX_DESC_LEN) {
   s = s
     .replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"').replace(/&#039;/gi, "'").replace(/&nbsp;/gi, " ")
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+    .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(Number(c)));
   s = s.replace(/\b(javascript|vbscript|data):/gi, "");
-  s = s.replace(/\s+/g, " ").trim();
-  return s.slice(0, maxLen);
+  return s.replace(/\s+/g, " ").trim().slice(0, maxLen);
 }
 
-// [P2][S5] Guarded fetch with timeout + size cap
+// ─── SAFE FETCH (timeout + size cap) ────────────────────────────────────────
+
 async function safeFetch(url, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -116,17 +125,102 @@ async function safeFetch(url, options = {}) {
     if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
     const contentLength = Number(r.headers.get("content-length") || 0);
     if (contentLength > MAX_RESPONSE_BYTES)
-      return { ok: false, error: `Content-Length too large: ${contentLength}` };
+      return { ok: false, error: `Content-Length too large` };
     const blob = await r.blob();
     if (blob.size > MAX_RESPONSE_BYTES)
       return { ok: false, error: `Body too large: ${blob.size}` };
-    const data = JSON.parse(await blob.text());
-    return { ok: true, data };
+    return { ok: true, text: await blob.text(), contentType: r.headers.get("content-type") || "" };
   } catch (err) {
     clearTimeout(timer);
     return { ok: false, error: err.message };
   }
 }
+
+async function safeFetchJSON(url, options = {}) {
+  const result = await safeFetch(url, options);
+  if (!result.ok) return result;
+  try {
+    return { ok: true, data: JSON.parse(result.text) };
+  } catch (err) {
+    return { ok: false, error: `JSON parse failed: ${err.message}` };
+  }
+}
+
+// ─── [F2] NATIVE RSS PARSER ──────────────────────────────────────────────────
+// Parses RSS/Atom XML directly — no third-party proxy required.
+
+function parseRSS(xml, feedUrl) {
+  const items = [];
+  let feedTitle = "";
+
+  // Extract feed title
+  const chanTitle = xml.match(/<channel[^>]*>[\s\S]*?<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (chanTitle) feedTitle = sanitiseText(chanTitle[1], 80);
+  if (!feedTitle) {
+    try { feedTitle = new URL(feedUrl).hostname; } catch { feedTitle = feedUrl; }
+  }
+
+  // Match <item> or <entry> blocks (RSS 2.0 and Atom)
+  const itemRegex = /<(?:item|entry)[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi;
+  let match;
+
+  while ((match = itemRegex.exec(xml)) !== null) {
+    const block = match[1];
+
+    const getTag = (tag) => {
+      // Handle CDATA and plain text
+      const re = new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>|([\\s\\S]*?))<\\/${tag}>`, "i");
+      const m = block.match(re);
+      return m ? (m[1] || m[2] || "").trim() : "";
+    };
+
+    const getAttr = (tag, attr) => {
+      const re = new RegExp(`<${tag}[^>]*${attr}="([^"]*)"`, "i");
+      const m = block.match(re);
+      return m ? m[1].trim() : "";
+    };
+
+    const title       = sanitiseText(getTag("title"), MAX_TITLE_LEN);
+    const link        = getTag("link") || getAttr("link", "href") || getTag("id");
+    const description = sanitiseText(getTag("description") || getTag("summary") || getTag("content"), MAX_DESC_LEN);
+    const pubDate     = getTag("pubDate") || getTag("published") || getTag("updated") || "";
+    const rawImg      = getAttr("enclosure", "url") || getAttr("media:content", "url") || "";
+    const imageUrl    = sanitiseImageUrl(rawImg);
+
+    if (!title || !link) continue;
+
+    // Validate link is a real URL
+    try { new URL(link); } catch { continue; }
+
+    let publishedAt = null;
+    if (pubDate) {
+      const d = new Date(pubDate);
+      if (!isNaN(d.getTime())) publishedAt = d.toISOString();
+    }
+
+    items.push({ id: link, title, description, url: link, imageUrl, source: feedTitle, publishedAt, sourceType: "rss" });
+  }
+
+  return items;
+}
+
+async function fetchRSSFeed(feedUrl) {
+  const result = await safeFetch(feedUrl, {
+    headers: { "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*" }
+  });
+  if (!result.ok) {
+    console.error(`RSS [${feedUrl}]:`, result.error);
+    return [];
+  }
+  try {
+    return parseRSS(result.text, feedUrl);
+  } catch (err) {
+    console.error(`RSS parse [${feedUrl}]:`, err.message);
+    return [];
+  }
+}
+
+// ─── NEWS API ────────────────────────────────────────────────────────────────
 
 async function fetchNewsAPI(query) {
   if (!NEWS_API_KEY) return [];
@@ -136,7 +230,7 @@ async function fetchNewsAPI(query) {
   url.searchParams.set("sortBy", "publishedAt");
   url.searchParams.set("pageSize", "10");
   url.searchParams.set("apiKey", NEWS_API_KEY);
-  const result = await safeFetch(url.toString());
+  const result = await safeFetchJSON(url.toString());
   if (!result.ok) { console.error(`NewsAPI [${query}]:`, result.error); return []; }
   return (result.data.articles || [])
     .filter((a) => a.title && a.url && a.title !== "[Removed]")
@@ -152,68 +246,64 @@ async function fetchNewsAPI(query) {
     }));
 }
 
-async function fetchGNews(query) {
-  if (!GNEWS_API_KEY) return [];
-  const url = new URL("https://gnews.io/api/v4/search");
-  url.searchParams.set("q", query);
-  url.searchParams.set("lang", "en");
-  url.searchParams.set("max", "10");
-  url.searchParams.set("token", GNEWS_API_KEY);
-  const result = await safeFetch(url.toString());
-  if (!result.ok) { console.error(`GNews [${query}]:`, result.error); return []; }
-  return (result.data.articles || [])
-    .filter((a) => a.title && a.url)
-    .map((a) => ({
-      id: a.url,
-      title: sanitiseText(a.title, MAX_TITLE_LEN),
-      description: sanitiseText(a.description),
-      url: a.url,
-      imageUrl: sanitiseImageUrl(a.image),
-      source: sanitiseText(a.source?.name || "GNews", 80),
-      publishedAt: a.publishedAt || null,
-      sourceType: "gnews",
-    }));
+// [F1] GNews sequential fetcher with delay to respect free-tier rate limits
+async function fetchAllGNews(queries) {
+  if (!GNEWS_API_KEY) return {};
+  const results = {};
+  for (const query of queries) {
+    const url = new URL("https://gnews.io/api/v4/search");
+    url.searchParams.set("q", query);
+    url.searchParams.set("lang", "en");
+    url.searchParams.set("max", "5"); // reduced from 10 to be kinder to rate limits
+    url.searchParams.set("token", GNEWS_API_KEY);
+    const result = await safeFetchJSON(url.toString());
+    if (!result.ok) {
+      console.error(`GNews [${query}]:`, result.error);
+      results[query] = [];
+    } else {
+      results[query] = (result.data.articles || [])
+        .filter((a) => a.title && a.url)
+        .map((a) => ({
+          id: a.url,
+          title: sanitiseText(a.title, MAX_TITLE_LEN),
+          description: sanitiseText(a.description),
+          url: a.url,
+          imageUrl: sanitiseImageUrl(a.image),
+          source: sanitiseText(a.source?.name || "GNews", 80),
+          publishedAt: a.publishedAt || null,
+          sourceType: "gnews",
+        }));
+    }
+    // [F1] Wait between each GNews call to avoid 429
+    await new Promise((r) => setTimeout(r, GNEWS_DELAY_MS));
+  }
+  return results;
 }
 
-async function fetchRSSFeed(feedUrl) {
-  const apiUrl = new URL("https://api.rss2json.com/v1/api.json");
-  apiUrl.searchParams.set("rss_url", feedUrl);
-  apiUrl.searchParams.set("count", "8");
-  if (RSS2JSON_KEY) apiUrl.searchParams.set("api_key", RSS2JSON_KEY);
-  const result = await safeFetch(apiUrl.toString());
-  if (!result.ok) { console.error(`RSS [${feedUrl}]:`, result.error); return []; }
-  if (result.data.status !== "ok") return [];
-  let hostname = feedUrl;
-  try { hostname = new URL(feedUrl).hostname; } catch {}
-  return (result.data.items || [])
-    .filter((i) => i.title && i.link)
-    .map((i) => ({
-      id: i.link,
-      title: sanitiseText(i.title, MAX_TITLE_LEN),
-      description: sanitiseText(i.description),
-      url: i.link,
-      imageUrl: sanitiseImageUrl(i.thumbnail || i.enclosure?.link || null),
-      source: sanitiseText(result.data.feed?.title || hostname, 80),
-      publishedAt: i.pubDate || new Date().toISOString(),
-      sourceType: "rss",
-    }));
-}
+// ─── PARALLEL CATEGORY FETCH ─────────────────────────────────────────────────
 
-// [P1] All categories fetched in parallel
 async function fetchAllCategories() {
+  // [F1] Fetch all GNews queries sequentially first (rate-limit safe)
+  const gnewsQueries  = CATEGORIES.map((c) => c.gnewsQuery);
+  const gnewsByQuery  = await fetchAllGNews(gnewsQueries);
+
+  // NewsAPI + RSS can still run in parallel (no shared rate limits)
   const results = await Promise.allSettled(
     CATEGORIES.map(async (cat) => {
-      const [newsApiResults, gnewsResults, ...rssResults] = await Promise.all([
+      const [newsApiResults, ...rssResults] = await Promise.all([
         fetchNewsAPI(cat.newsApiQuery),
-        fetchGNews(cat.gnewsQuery),
         ...cat.rssFeeds.map(fetchRSSFeed),
       ]);
+
+      const gnewsResults = gnewsByQuery[cat.gnewsQuery] || [];
       const combined = [...newsApiResults, ...gnewsResults, ...rssResults.flat()];
+
       const seen = new Set();
       const deduped = combined.filter((a) => {
         if (seen.has(a.id)) return false;
         seen.add(a.id); return true;
       });
+
       return {
         cat,
         articles: deduped.map((a) => ({
@@ -234,19 +324,22 @@ async function fetchAllCategories() {
     byCategory[cat.id] = articles;
     allArticles.push(...articles);
   }
+
   // Global dedupe
   const seen = new Set();
   const dedupedAll = allArticles.filter((a) => {
     if (seen.has(a.id)) return false;
     seen.add(a.id); return true;
   });
+
   return { byCategory, dedupedAll };
 }
 
-async function selectAIPicks(allArticles) {
-  if (!OPENAI_KEY) { console.warn("OPENAI_API_KEY not set — skipping AI picks."); return []; }
+// ─── AI PICKS ────────────────────────────────────────────────────────────────
 
-  // [P3] Sort by freshness DESC, top 30
+async function selectAIPicks(allArticles) {
+  if (!OPENAI_KEY) { console.warn("OPENAI_API_KEY not set."); return []; }
+
   const pool = [...allArticles]
     .filter((a) => a.publishedAt)
     .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
@@ -275,7 +368,7 @@ Respond ONLY with valid compact JSON:
 Articles:
 ${articleList}`;
 
-  const result = await safeFetch("https://api.openai.com/v1/chat/completions", {
+  const result = await safeFetchJSON("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_KEY}` },
     body: JSON.stringify({
@@ -293,41 +386,40 @@ ${articleList}`;
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON in AI response");
     const parsed = JSON.parse(jsonMatch[0]);
-
-    // [S11] Validate structure
     if (!Array.isArray(parsed.picks)) throw new Error("picks is not an array");
 
-    return parsed.picks
-      .slice(0, 3) // enforce max 3
-      .map((pick) => {
-        // [S10] Bounds-check index
-        const idx = Number(pick.articleIndex);
-        if (!Number.isInteger(idx) || idx < 1 || idx > pool.length) {
-          console.warn(`AI returned out-of-bounds articleIndex: ${pick.articleIndex}`);
-          return null;
-        }
-        return {
-          articleIndex: idx,
-          headline:     sanitiseText(pick.headline, 120),
-          summary:      sanitiseText(pick.summary, 300),
-          whyItMatters: sanitiseText(pick.whyItMatters, 200),
-          category:     sanitiseText(pick.category, 60),
-          article:      pool[idx - 1],
-        };
-      })
-      .filter(Boolean);
+    return parsed.picks.slice(0, 3).map((pick) => {
+      const idx = Number(pick.articleIndex);
+      if (!Number.isInteger(idx) || idx < 1 || idx > pool.length) {
+        console.warn(`Invalid articleIndex from AI: ${pick.articleIndex}`);
+        return null;
+      }
+      return {
+        articleIndex: idx,
+        headline:     sanitiseText(pick.headline, 120),
+        summary:      sanitiseText(pick.summary, 300),
+        whyItMatters: sanitiseText(pick.whyItMatters, 200),
+        category:     sanitiseText(pick.category, 60),
+        article:      pool[idx - 1],
+      };
+    }).filter(Boolean);
   } catch (err) {
     console.error("AI parse error:", err.message);
     return [];
   }
 }
 
-const handler = schedule("30 0 * * *", async () => {
+// ─── MAIN HANDLER ────────────────────────────────────────────────────────────
+
+const handler = schedule("30 0 * * *", async (event, context) => {
   const startMs = Date.now();
   console.log("🔄 Checko news fetch starting…");
 
   const { byCategory, dedupedAll } = await fetchAllCategories();
+  console.log(`📰 Fetched ${dedupedAll.length} articles across ${Object.keys(byCategory).length} categories`);
+
   const aiPicks = await selectAIPicks(dedupedAll);
+  console.log(`🤖 AI selected ${aiPicks.length} picks`);
 
   const output = {
     fetchedAt:     new Date().toISOString(),
@@ -337,10 +429,17 @@ const handler = schedule("30 0 * * *", async () => {
     byCategory,
   };
 
-  const store = getStore("news-data");
+  // [F3] Pass siteID + token explicitly so Blobs works in all invocation contexts
+  const storeOptions = {};
+  if (NETLIFY_SITE_ID && NETLIFY_TOKEN) {
+    storeOptions.siteID = NETLIFY_SITE_ID;
+    storeOptions.token  = NETLIFY_TOKEN;
+  }
+
+  const store = getStore({ name: "news-data", ...storeOptions });
   await store.setJSON("latest", output);
 
-  console.log(`✅ Done in ${output.durationMs}ms. ${dedupedAll.length} articles, ${aiPicks.length} AI picks stored.`);
+  console.log(`✅ Done in ${Date.now() - startMs}ms. ${dedupedAll.length} articles, ${aiPicks.length} AI picks stored.`);
   return { statusCode: 200 };
 });
 
