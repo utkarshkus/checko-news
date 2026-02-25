@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Checko | Anti-Counterfeiting Intelligence Hub</title>
+  <meta name="description" content="Daily AI-curated intelligence on counterfeiting, brand protection, supply chain security and authentication technology — powered by GPT-4o-mini." />
+
+  <!-- [P5] OpenGraph tags for rich link previews -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:site_name"   content="Checko Intelligence Hub" />
+  <meta property="og:title"       content="Checko | Anti-Counterfeiting Intelligence Hub" />
+  <meta property="og:description" content="Daily AI-curated intelligence on counterfeiting, brand protection, supply chain security and authentication technology." />
+  <meta property="og:url"         content="https://checko.ai/intelligence" />
+  <meta property="og:image"       content="https://checko.ai/og-intelligence.png" />
+  <meta property="og:image:width"  content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <!-- [P5] Twitter / X card -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:site"        content="@checkoai" />
+  <meta name="twitter:title"       content="Checko | Anti-Counterfeiting Intelligence Hub" />
+  <meta name="twitter:description" content="Daily AI-curated intelligence on counterfeiting, brand protection, supply chain security and authentication technology." />
+  <meta name="twitter:image"       content="https://checko.ai/og-intelligence.png" />
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://checko.ai/intelligence" />
+
+  <!-- [P4] Preconnect to Google Fonts domains to eliminate DNS + TLS round-trips -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- display=swap already set — fonts load async, no render-blocking -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Roboto:wght@400;500&display=swap" media="print" onload="this.media='all'" />
+  <!-- Fallback for no-JS -->
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Roboto:wght@400;500&display=swap" /></noscript>
+
+  <style>
+    /* ══════════════════════════════════════════
+       CHECKO BRAND DESIGN SYSTEM
+    ══════════════════════════════════════════ */
+    :root {
+      --checko-navy:          #1B2A4A;
+      --checko-teal:          #00BCD4;
+      --checko-teal-hover:    #0097A7;
+      --checko-white:         #FFFFFF;
+      --checko-light-bg:      #F5F7FA;
+      --checko-text:          #333333;
+      --checko-text-secondary:#666666;
+      --checko-highlight:     #E3F2FD;
+      --checko-border:        #E0E0E0;
+      --font-heading:         'Poppins', 'Helvetica Neue', Arial, sans-serif;
+      --font-body:            'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      --max-width:            1200px;
+      --card-radius:          8px;
+      --btn-radius:           6px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      font-size: 16px;
+      color: var(--checko-text);
+      background: var(--checko-light-bg);
+      line-height: 1.6;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--checko-light-bg); }
+    ::-webkit-scrollbar-thumb { background: var(--checko-teal); border-radius: 3px; }
+
+    /* ════════════════════════════
+       NAV
+    ════════════════════════════ */
+    nav {
+      background: var(--checko-navy);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+    }
+    .nav-inner {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .logo-mark {
+      width: 36px; height: 36px;
+      background: var(--checko-teal);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-heading);
+      font-weight: 700; font-size: 18px; color: white;
+      flex-shrink: 0;
+    }
+    .logo-wordmark {
+      font-family: var(--font-heading);
+      font-weight: 700; font-size: 20px;
+      color: white; letter-spacing: -0.3px;
+    }
+    .logo-wordmark span { color: var(--checko-teal); }
+    .nav-divider {
+      width: 1px; height: 24px;
+      background: rgba(255,255,255,0.2);
+      margin: 0 14px;
+    }
+    .nav-label {
+      font-size: 13px;
+      color: rgba(255,255,255,0.55);
+      font-family: var(--font-body);
+      white-space: nowrap;
+    }
+    .nav-status {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: rgba(255,255,255,0.6);
+    }
+    .live-dot {
+      width: 8px; height: 8px;
+      background: #4CAF50; border-radius: 50%;
+      animation: livepulse 2.5s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes livepulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.35; transform: scale(0.85); }
+    }
+    #navStatusText { white-space: nowrap; }
+
+    /* ════════════════════════════
+       HERO
+    ════════════════════════════ */
+    .hero {
+      background: linear-gradient(135deg, #1B2A4A 0%, #1a4a6e 50%, #00BCD4 100%);
+      padding: 64px 24px 52px;
+      text-align: center;
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .hero-content { position: relative; z-index: 1; }
+    .hero-tag {
+      display: inline-block;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: var(--font-heading);
+      font-weight: 600;
+      padding: 5px 16px;
+      letter-spacing: 1px;
+      margin-bottom: 22px;
+      text-transform: uppercase;
+    }
+    .hero h1 {
+      font-family: var(--font-heading);
+      font-size: 44px;
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.5px;
+      margin-bottom: 18px;
+    }
+    .hero p {
+      font-size: 17px;
+      color: rgba(255,255,255,0.78);
+      max-width: 580px;
+      margin: 0 auto 32px;
+      line-height: 1.65;
+    }
+    .hero-pills {
+      display: flex; flex-wrap: wrap;
+      align-items: center; justify-content: center;
+      gap: 12px;
+    }
+    .hero-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.85);
+    }
+
+    /* ════════════════════════════
+       UPDATE BAR
+    ════════════════════════════ */
+    #updateBar {
+      background: var(--checko-highlight);
+      border-top: 1px solid #b3e5fc;
+      border-bottom: 1px solid #b3e5fc;
+      padding: 11px 24px;
+      text-align: center;
+      font-size: 13px;
+      font-family: var(--font-heading);
+      font-weight: 500;
+      color: var(--checko-navy);
+      transition: background 0.3s;
+    }
+
+    /* ════════════════════════════
+       SECTION BASE
+    ════════════════════════════ */
+    .section { padding: 72px 24px; }
+    .section-white { background: white; }
+    .section-inner { max-width: var(--max-width); margin: 0 auto; }
+
+    .section-header { text-align: center; margin-bottom: 48px; }
+    .section-header h2 {
+      font-family: var(--font-heading);
+      font-size: 32px; font-weight: 600;
+      color: var(--checko-navy);
+      letter-spacing: -0.3px; margin-bottom: 12px;
+    }
+    .section-header p {
+      color: var(--checko-text-secondary);
+      font-size: 16px; max-width: 540px; margin: 0 auto;
+    }
+    .section-divider {
+      width: 60px; height: 3px;
+      background: var(--checko-teal);
+      margin: 14px auto 0;
+      border-radius: 2px;
+    }
+
+    /* ════════════════════════════
+       LOADING / SKELETON
+    ════════════════════════════ */
+    .loading-wrap {
+      text-align: center; padding: 64px 24px;
+    }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 4px solid var(--checko-border);
+      border-top-color: var(--checko-teal);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-title {
+      font-family: var(--font-heading);
+      font-weight: 600; font-size: 16px;
+      color: var(--checko-navy); margin-bottom: 6px;
+    }
+    .loading-sub { font-size: 14px; color: var(--checko-text-secondary); }
+
+    /* Skeleton cards */
+    .skeleton-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+    .skeleton-card { background: white; border-radius: var(--card-radius); border: 1px solid var(--checko-border); overflow: hidden; }
+    .skel { background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 4px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .skel-img { height: 170px; border-radius: 0; margin-bottom: 0; }
+    .skel-body { padding: 20px; }
+    .skel-tag { height: 20px; width: 80px; margin-bottom: 12px; }
+    .skel-title { height: 16px; width: 90%; margin-bottom: 8px; }
+    .skel-title2 { height: 16px; width: 70%; margin-bottom: 12px; }
+    .skel-desc { height: 12px; width: 100%; margin-bottom: 6px; }
+    .skel-desc2 { height: 12px; width: 85%; margin-bottom: 6px; }
+    .skel-desc3 { height: 12px; width: 65%; }
+
+    /* ════════════════════════════
+       AI TOP 3 PICKS
+    ════════════════════════════ */
+    .ai-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--checko-highlight);
+      border: 1px solid #81d4fa;
+      border-radius: 20px;
+      font-size: 12px; font-family: var(--font-heading);
+      font-weight: 600; color: #0277bd;
+      padding: 5px 16px; margin-bottom: 10px;
+      letter-spacing: 0.4px;
+    }
+    .ai-picks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 24px;
+    }
+    .ai-pick-card {
+      background: var(--checko-white);
+      border: 1px solid var(--checko-border);
+      border-radius: var(--card-radius);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .ai-pick-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.13);
+    }
+    .ai-pick-header {
+      background: linear-gradient(135deg, var(--checko-navy) 0%, #253d6a 100%);
+      padding: 20px 24px 18px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .rank-circle {
+      width: 46px; height: 46px; flex-shrink: 0;
+      background: var(--checko-teal);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-heading);
+      font-weight: 700; font-size: 20px; color: white;
+    }
+    .rank-meta { color: white; }
+    .rank-label { font-family: var(--font-heading); font-size: 13px; font-weight: 600; opacity: 0.9; }
+    .rank-sub { font-size: 12px; opacity: 0.55; }
+    .ai-pick-body { padding: 22px; flex: 1; display: flex; flex-direction: column; }
+    .pick-tag {
+      display: inline-block;
+      background: var(--checko-highlight);
+      color: #0277bd;
+      font-size: 11px; font-weight: 600;
+      font-family: var(--font-heading);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      padding: 3px 10px; border-radius: 12px; margin-bottom: 12px;
+    }
+    .pick-title {
+      font-family: var(--font-heading);
+      font-size: 17px; font-weight: 600;
+      color: var(--checko-navy);
+      margin-bottom: 10px; line-height: 1.4;
+    }
+    .pick-summary {
+      font-size: 14px; color: var(--checko-text-secondary);
+      line-height: 1.65; flex: 1; margin-bottom: 14px;
+    }
+    .pick-why {
+      background: var(--checko-light-bg);
+      border-left: 3px solid var(--checko-teal);
+      border-radius: 0 4px 4px 0;
+      padding: 10px 14px;
+      font-size: 13px; color: var(--checko-text);
+      margin-bottom: 16px; line-height: 1.55;
+    }
+    .pick-why strong { color: var(--checko-teal); }
+    .pick-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 14px; border-top: 1px solid var(--checko-border);
+      font-size: 13px;
+    }
+    .pick-source { color: var(--checko-text-secondary); }
+    .pick-link {
+      color: var(--checko-teal); text-decoration: none;
+      font-weight: 600; font-size: 13px;
+      transition: color 0.2s;
+    }
+    .pick-link:hover { color: var(--checko-teal-hover); }
+
+    /* ════════════════════════════
+       CATEGORY TABS
+    ════════════════════════════ */
+    .cat-tabs {
+      display: flex; flex-wrap: wrap;
+      gap: 10px; justify-content: center;
+      margin-bottom: 44px;
+    }
+    .tab-btn {
+      background: white;
+      border: 1.5px solid var(--checko-border);
+      border-radius: 24px;
+      font-family: var(--font-heading);
+      font-weight: 600; font-size: 14px;
+      color: var(--checko-text-secondary);
+      padding: 8px 20px; cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { border-color: var(--checko-teal); color: var(--checko-teal); }
+    .tab-btn.active {
+      background: var(--checko-teal);
+      border-color: var(--checko-teal);
+      color: white;
+    }
+
+    /* ════════════════════════════
+       CATEGORY SECTION HEADERS
+    ════════════════════════════ */
+    .cat-block { margin-bottom: 56px; }
+    .cat-block-header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 22px; padding-bottom: 14px;
+      border-bottom: 2px solid var(--checko-border);
+    }
+    .cat-icon-wrap {
+      width: 40px; height: 40px;
+      background: var(--checko-highlight);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .cat-block-title {
+      font-family: var(--font-heading);
+      font-size: 20px; font-weight: 600;
+      color: var(--checko-navy);
+    }
+    .cat-count-badge {
+      background: var(--checko-teal);
+      color: white; font-size: 12px;
+      font-weight: 700; font-family: var(--font-heading);
+      padding: 2px 9px; border-radius: 12px;
+    }
+    .cat-source-pills {
+      margin-left: auto;
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .source-pill {
+      font-size: 11px; color: var(--checko-text-secondary);
+      background: var(--checko-light-bg);
+      border: 1px solid var(--checko-border);
+      border-radius: 12px; padding: 2px 8px;
+      font-family: var(--font-body);
+    }
+
+    /* ════════════════════════════
+       NEWS CARDS
+    ════════════════════════════ */
+    .news-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 22px;
+    }
+    .news-card {
+      background: white;
+      border: 1px solid var(--checko-border);
+      border-radius: var(--card-radius);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .news-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    }
+    .news-card-img {
+      width: 100%;
+      /* [P7] aspect-ratio reserves space before image loads, preventing CLS */
+      aspect-ratio: 16 / 9;
+      object-fit: cover; display: block;
+      background: linear-gradient(135deg, #1B2A4A18, #00BCD425);
+    }
+    .news-card-placeholder {
+      aspect-ratio: 16 / 9; /* [P7] matches img ratio */
+      background: linear-gradient(135deg, #1B2A4A0d, #00BCD418);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 48px;
+    }
+    .news-card-body { padding: 18px; flex: 1; display: flex; flex-direction: column; }
+    .news-card-cat {
+      display: inline-block;
+      background: var(--checko-light-bg);
+      color: var(--checko-text-secondary);
+      font-size: 11px; font-weight: 600;
+      font-family: var(--font-heading);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      padding: 3px 10px; border-radius: 12px; margin-bottom: 10px;
+    }
+    .news-card-title {
+      font-family: var(--font-heading);
+      font-size: 15px; font-weight: 600;
+      color: var(--checko-navy);
+      margin-bottom: 8px; line-height: 1.4;
+    }
+    .news-card-desc {
+      font-size: 13.5px; color: var(--checko-text-secondary);
+      line-height: 1.6; flex: 1; margin-bottom: 14px;
+    }
+    .news-card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 12px; border-top: 1px solid var(--checko-border);
+      font-size: 12px; color: var(--checko-text-secondary);
+      flex-wrap: wrap; gap: 6px;
+    }
+    .news-card-meta { display: flex; align-items: center; gap: 4px; }
+    .source-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%; flex-shrink: 0;
+    }
+    .news-card-link {
+      color: var(--checko-teal); text-decoration: none;
+      font-weight: 500; font-size: 13px;
+      transition: color 0.2s; white-space: nowrap;
+    }
+    .news-card-link:hover { color: var(--checko-teal-hover); }
+
+    /* ════════════════════════════
+       ERROR STATE
+    ════════════════════════════ */
+    .error-box {
+      background: #fff5f5;
+      border: 1px solid #ffccbc;
+      border-radius: var(--card-radius);
+      padding: 28px; text-align: center;
+    }
+    .error-box h3 {
+      font-family: var(--font-heading);
+      color: #c62828; margin-bottom: 8px;
+    }
+    .error-box p { color: var(--checko-text-secondary); font-size: 14px; }
+
+    /* ════════════════════════════
+       STATS BAR
+    ════════════════════════════ */
+    .stats-bar {
+      display: flex; flex-wrap: wrap;
+      gap: 0; background: white;
+      border-top: 1px solid var(--checko-border);
+      border-bottom: 1px solid var(--checko-border);
+    }
+    .stat-item {
+      flex: 1; min-width: 160px;
+      text-align: center;
+      padding: 20px 16px;
+      border-right: 1px solid var(--checko-border);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-value {
+      font-family: var(--font-heading);
+      font-size: 28px; font-weight: 700;
+      color: var(--checko-teal);
+    }
+    .stat-label {
+      font-size: 13px; color: var(--checko-text-secondary);
+      margin-top: 2px;
+    }
+
+    /* ════════════════════════════
+       FOOTER
+    ════════════════════════════ */
+    footer {
+      background: var(--checko-navy);
+      color: rgba(255,255,255,0.7);
+      padding: 52px 24px 32px;
+    }
+    .footer-inner {
+      max-width: var(--max-width); margin: 0 auto;
+      display: flex; flex-wrap: wrap;
+      gap: 40px; justify-content: space-between; align-items: flex-start;
+    }
+    .footer-brand-name {
+      font-family: var(--font-heading);
+      font-weight: 700; font-size: 22px; color: white;
+      margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+    }
+    .footer-brand-name span { color: var(--checko-teal); }
+    .footer-desc {
+      font-size: 14px; line-height: 1.7;
+      max-width: 300px; color: rgba(255,255,255,0.6);
+    }
+    .footer-section h4 {
+      font-family: var(--font-heading);
+      font-weight: 600; color: white;
+      font-size: 13px; margin-bottom: 14px;
+      text-transform: uppercase; letter-spacing: 0.7px;
+    }
+    .footer-section a {
+      display: block;
+      color: rgba(255,255,255,0.55);
+      text-decoration: none; font-size: 14px;
+      margin-bottom: 9px; transition: color 0.2s;
+    }
+    .footer-section a:hover { color: var(--checko-teal); }
+    .footer-bottom {
+      max-width: var(--max-width); margin: 36px auto 0;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex; flex-wrap: wrap;
+      justify-content: space-between; align-items: center;
+      gap: 12px; font-size: 13px;
+    }
+    .footer-bottom a { color: var(--checko-teal); text-decoration: none; }
+
+    /* ════════════════════════════
+       RESPONSIVE
+    ════════════════════════════ */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 28px; }
+      .section { padding: 48px 16px; }
+      .ai-picks-grid, .news-grid, .skeleton-grid { grid-template-columns: 1fr; }
+      .nav-label, .nav-divider { display: none; }
+      #navStatusText { font-size: 12px; }
+      .stat-item { min-width: 120px; }
+      .cat-source-pills { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     NAV
+════════════════════════════════════════════ -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="logo-mark">C</div>
+      <div class="logo-wordmark">Checko<span>.ai</span></div>
+      <div class="nav-divider"></div>
+      <div class="nav-label">Intelligence Hub</div>
+    </a>
+    <div class="nav-status">
+      <div class="live-dot"></div>
+      <span id="navStatusText">Loading…</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════════
+     HERO
+════════════════════════════════════════════ -->
+<div class="hero">
+  <div class="hero-content">
+    <div class="hero-tag">🛡️ Anti-Counterfeiting Intelligence</div>
+    <h1>Stay Ahead of<br>Counterfeiting Threats</h1>
+    <p>Daily curated intelligence on counterfeit goods, brand protection, supply chain security, and authentication technology — surfaced by AI from global sources.</p>
+    <div class="hero-pills">
+      <div class="hero-pill">🤖 AI-curated top picks</div>
+      <div class="hero-pill">📡 6 source categories</div>
+      <div class="hero-pill">🔄 Updated 6 AM IST daily</div>
+      <div class="hero-pill">🌐 NewsAPI · GNews · RSS</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     UPDATE BAR
+════════════════════════════════════════════ -->
+<div id="updateBar">⏳ Loading today's intelligence feed…</div>
+
+<!-- ════════════════════════════════════════════
+     STATS BAR
+════════════════════════════════════════════ -->
+<div class="stats-bar" id="statsBar" style="display:none">
+  <div class="stat-item">
+    <div class="stat-value" id="statTotal">—</div>
+    <div class="stat-label">Articles Today</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value">6</div>
+    <div class="stat-label">Topic Categories</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value">3+</div>
+    <div class="stat-label">Source Types</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value" id="statUpdated">—</div>
+    <div class="stat-label">Last Updated (IST)</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SECTION 1 — AI TOP 3 PICKS
+════════════════════════════════════════════ -->
+<section class="section section-white">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="ai-badge">✦ GPT-4o-mini Curated</div>
+      <h2>Top 3 Stories of the Day</h2>
+      <div class="section-divider"></div>
+      <p>Our AI scans all sources and selects the three stories with highest relevance to anti-counterfeiting, brand protection, and supply chain trust.</p>
+    </div>
+
+    <div id="aiPicksContainer">
+      <div class="skeleton-grid">
+        <div class="skeleton-card">
+          <div class="skel skel-img"></div>
+          <div class="skel-body">
+            <div class="skel skel-tag"></div>
+            <div class="skel skel-title"></div>
+            <div class="skel skel-title2"></div>
+            <div class="skel skel-desc"></div>
+            <div class="skel skel-desc2"></div>
+            <div class="skel skel-desc3"></div>
+          </div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skel skel-img"></div>
+          <div class="skel-body">
+            <div class="skel skel-tag"></div>
+            <div class="skel skel-title"></div>
+            <div class="skel skel-title2"></div>
+            <div class="skel skel-desc"></div>
+            <div class="skel skel-desc2"></div>
+            <div class="skel skel-desc3"></div>
+          </div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skel skel-img"></div>
+          <div class="skel-body">
+            <div class="skel skel-tag"></div>
+            <div class="skel skel-title"></div>
+            <div class="skel skel-title2"></div>
+            <div class="skel skel-desc"></div>
+            <div class="skel skel-desc2"></div>
+            <div class="skel skel-desc3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════
+     SECTION 2 — CATEGORISED NEWS
+════════════════════════════════════════════ -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>All Intelligence, Categorised</h2>
+      <div class="section-divider"></div>
+      <p>Browse the full feed organised by topic — aggregated from NewsAPI, GNews, and specialist RSS sources.</p>
+    </div>
+
+    <div class="cat-tabs" id="catTabs">
+      <button class="tab-btn active" onclick="filterCat('all',this)">All Topics</button>
+      <button class="tab-btn" onclick="filterCat('counterfeiting',this)">⚠️ Counterfeiting</button>
+      <button class="tab-btn" onclick="filterCat('brand-protection',this)">🛡️ Brand Protection</button>
+      <button class="tab-btn" onclick="filterCat('supply-chain',this)">🔗 Supply Chain</button>
+      <button class="tab-btn" onclick="filterCat('technology',this)">💡 Technology</button>
+      <button class="tab-btn" onclick="filterCat('regulation',this)">⚖️ Regulation & IP</button>
+      <button class="tab-btn" onclick="filterCat('luxury',this)">💎 Luxury & Retail</button>
+    </div>
+
+    <div id="allNewsContainer">
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <div class="loading-title">Aggregating news feed…</div>
+        <div class="loading-sub">Pulling from NewsAPI, GNews, WIPO, INTERPOL, CBP and more</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════
+     FOOTER
+════════════════════════════════════════════ -->
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand-name">
+        <div class="logo-mark" style="width:30px;height:30px;font-size:15px;">C</div>
+        Checko<span>.ai</span>
+      </div>
+      <div class="footer-desc">The world's first 100% copy-proof, tamper-proof anti-counterfeiting labels using 3D PUF technology. Empowering brands and consumers to trust the genuineness of every product. Founded at IIT Kanpur.</div>
+    </div>
+    <div class="footer-section">
+      <h4>Platform</h4>
+      <a href="https://checko.ai" target="_blank">Visit Checko.ai ↗</a>
+      <a href="#">For Brands</a>
+      <a href="#">For Consumers</a>
+      <a href="#">3D PUF Technology</a>
+    </div>
+    <div class="footer-section">
+      <h4>Intelligence Sources</h4>
+      <a href="https://newsapi.org" target="_blank">NewsAPI</a>
+      <a href="https://gnews.io" target="_blank">GNews</a>
+      <a href="https://www.wipo.int" target="_blank">WIPO</a>
+      <a href="https://www.interpol.int" target="_blank">INTERPOL</a>
+      <a href="https://www.cbp.gov" target="_blank">U.S. CBP</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2025 Checko Technologies Pvt. Ltd. · IIT Kanpur</span>
+    <span>Intelligence refreshed daily at <strong style="color:var(--checko-teal)">6:00 AM IST</strong> · Powered by GPT-4o-mini</span>
+  </div>
+</footer>
+
+<!-- ════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════ -->
+<script>
+/* ─────────────────────────────────────────────
+   CATEGORY METADATA (matches backend categories)
+───────────────────────────────────────────── */
+const CATEGORIES = [
+  { id: "counterfeiting",   label: "Counterfeiting & Seizures", icon: "⚠️", color: "#e74c3c" },
+  { id: "brand-protection", label: "Brand Protection",          icon: "🛡️", color: "#2980b9" },
+  { id: "supply-chain",     label: "Supply Chain Security",     icon: "🔗", color: "#27ae60" },
+  { id: "technology",       label: "Authentication Technology", icon: "💡", color: "#8e44ad" },
+  { id: "regulation",       label: "Regulation & IP",           icon: "⚖️", color: "#e67e22" },
+  { id: "luxury",           label: "Luxury, Pharma & Retail",   icon: "💎", color: "#d4ac0d" },
+];
+
+/* ─────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────── */
+let newsData     = null;
+let activeFilter = "all";
+
+/* ─────────────────────────────────────────────
+   BOOT
+───────────────────────────────────────────── */
+(async function init() {
+  updateNav("Loading today's intelligence…");
+  await loadNews();
+  scheduleNextCheck();
+})();
+
+/* ─────────────────────────────────────────────
+   LOAD FROM /api/news (Netlify function)
+───────────────────────────────────────────── */
+async function loadNews() {
+  try {
+    const r = await fetch("/api/news", { cache: "no-store" });
+    if (!r.ok) throw new Error(`API ${r.status}`);
+    newsData = await r.json();
+
+    renderStats();
+    renderAIPicks(newsData.aiPicks || []);
+    renderAllNews();
+    updateBar(buildBarMsg());
+    updateNav(`Updated ${formatISTTime(newsData.fetchedAt)} IST · ${newsData.totalArticles} articles`);
+    document.getElementById("statsBar").style.display = "flex";
+  } catch (err) {
+    console.error("News load failed:", err);
+    updateBar("⚠️ Could not load news data. The scheduled fetch may not have run yet.");
+    updateNav("Feed unavailable");
+    document.getElementById("aiPicksContainer").innerHTML = errorBox(
+      "Feed not yet available",
+      "The Netlify scheduled function runs at 6:00 AM IST. If this is a new deployment, trigger a manual fetch from the Netlify dashboard."
+    );
+    document.getElementById("allNewsContainer").innerHTML = "";
+  }
+}
+
+/* ─────────────────────────────────────────────
+   AUTO-RECHECK at 6 AM IST (client-side)
+   [P6] Replaces fragile single setTimeout (which browsers clamp in
+   background tabs and loses precision for 24h+ delays) with a
+   visibility-aware polling approach:
+     • Polls every 60 s — lightweight, no cumulative drift
+     • On visibilitychange (tab brought back to foreground) immediately
+       checks whether 6 AM IST has passed and data is stale
+     • Triggers a silent loadNews() without a hard page reload
+───────────────────────────────────────────── */
+
+function getISTNow() {
+  const now   = new Date();
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  return new Date(utcMs + 5.5 * 3600000);
+}
+
+function get6amISTToday() {
+  const t = getISTNow();
+  return new Date(t.getFullYear(), t.getMonth(), t.getDate(), 6, 0, 0, 0);
+}
+
+function isDataStale() {
+  if (!newsData?.fetchedAt) return true;
+  const fetchedAt  = new Date(newsData.fetchedAt);
+  const utcFetched = fetchedAt.getTime() + fetchedAt.getTimezoneOffset() * 60000;
+  const istFetched = new Date(utcFetched + 5.5 * 3600000);
+  const today6am   = get6amISTToday();
+  const istNow     = getISTNow();
+  // Data is stale if: current time is past 6 AM today AND data was fetched before today's 6 AM
+  return istNow >= today6am && istFetched < today6am;
+}
+
+let refreshCheckInterval = null;
+let countdownInterval    = null;
+
+function scheduleNextCheck() {
+  // Clear any existing intervals
+  if (refreshCheckInterval) clearInterval(refreshCheckInterval);
+  if (countdownInterval)    clearInterval(countdownInterval);
+
+  // Poll every 60 seconds — check if data is now stale
+  refreshCheckInterval = setInterval(async () => {
+    if (isDataStale()) {
+      clearInterval(refreshCheckInterval);
+      clearInterval(countdownInterval);
+      console.log("⏰ 6 AM IST passed — refreshing news data…");
+      await loadNews();
+      scheduleNextCheck();
+    }
+  }, 60_000);
+
+  // Also check immediately when tab becomes visible again
+  document.removeEventListener("visibilitychange", onVisibilityChange);
+  document.addEventListener("visibilitychange", onVisibilityChange);
+
+  // Start countdown display
+  startCountdownDisplay();
+}
+
+async function onVisibilityChange() {
+  if (document.visibilityState === "visible" && isDataStale()) {
+    console.log("👁 Tab visible + data stale — refreshing…");
+    await loadNews();
+    scheduleNextCheck();
+  }
+}
+
+function startCountdownDisplay() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  const tick = () => {
+    const istNow  = getISTNow();
+    const next6am = get6amISTToday();
+    if (istNow >= next6am) next6am.setDate(next6am.getDate() + 1);
+    const ms = next6am - istNow;
+    const h  = Math.floor(ms / 3_600_000);
+    const m  = Math.floor((ms % 3_600_000) / 60_000);
+    const countdown = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    if (newsData) {
+      document.getElementById("navStatusText").textContent =
+        `Updated ${formatISTTime(newsData.fetchedAt)} IST · Next refresh in ${countdown}`;
+    }
+  };
+  tick(); // run immediately
+  countdownInterval = setInterval(tick, 60_000);
+}
+
+/* ─────────────────────────────────────────────
+   RENDER — STATS BAR
+───────────────────────────────────────────── */
+function renderStats() {
+  document.getElementById("statTotal").textContent = newsData.totalArticles || "—";
+  document.getElementById("statUpdated").textContent = formatISTTime(newsData.fetchedAt);
+}
+
+/* ─────────────────────────────────────────────
+   RENDER — AI TOP 3 PICKS
+───────────────────────────────────────────── */
+function renderAIPicks(picks) {
+  const container = document.getElementById("aiPicksContainer");
+  if (!picks || !picks.length) {
+    container.innerHTML = errorBox("AI picks unavailable", "The AI selection could not be completed. Check that your OPENAI_API_KEY is set in Netlify environment variables.");
+    return;
+  }
+
+  const rankLabels = ["Top Pick", "2nd Pick", "3rd Pick"];
+
+  container.innerHTML = `<div class="ai-picks-grid">${picks.map((pick, i) => `
+    <div class="ai-pick-card">
+      <div class="ai-pick-header">
+        <div class="rank-circle">${i + 1}</div>
+        <div class="rank-meta">
+          <div class="rank-label">${rankLabels[i] || `Pick #${i+1}`}</div>
+          <div class="rank-sub">AI Selected · GPT-4o-mini</div>
+        </div>
+      </div>
+      <div class="ai-pick-body">
+        <span class="pick-tag">${esc(pick.category || "Intelligence")}</span>
+        <div class="pick-title">${esc(pick.headline)}</div>
+        <div class="pick-summary">${esc(pick.summary)}</div>
+        <div class="pick-why"><strong>Why it matters:</strong> ${esc(pick.whyItMatters)}</div>
+        <div class="pick-footer">
+          <span class="pick-source">📰 ${esc(pick.article?.source || "Source")}</span>
+          ${pick.article?.url
+            ? `<a href="${esc(pick.article.url)}" target="_blank" rel="noopener" class="pick-link">Read Full Story →</a>`
+            : ""}
+        </div>
+      </div>
+    </div>
+  `).join("")}</div>`;
+}
+
+/* ─────────────────────────────────────────────
+   RENDER — ALL CATEGORISED NEWS
+───────────────────────────────────────────── */
+function renderAllNews() {
+  const container = document.getElementById("allNewsContainer");
+  if (!newsData || !newsData.byCategory) {
+    container.innerHTML = errorBox("No articles found", "News data is unavailable.");
+    return;
+  }
+
+  const catsToShow = activeFilter === "all"
+    ? CATEGORIES
+    : CATEGORIES.filter(c => c.id === activeFilter);
+
+  const html = catsToShow.map(cat => {
+    const articles = newsData.byCategory[cat.id] || [];
+    if (!articles.length) return "";
+
+    // Gather unique sources for this category
+    const sourcesSet = new Set(articles.map(a => a.source).filter(Boolean));
+    const sourcesList = [...sourcesSet].slice(0, 4);
+
+    return `
+      <div class="cat-block" data-cat="${cat.id}">
+        <div class="cat-block-header">
+          <div class="cat-icon-wrap">${cat.icon}</div>
+          <div class="cat-block-title">${cat.label}</div>
+          <span class="cat-count-badge">${articles.length}</span>
+          <div class="cat-source-pills">
+            ${sourcesList.map(s => `<span class="source-pill">${esc(s)}</span>`).join("")}
+          </div>
+        </div>
+        <div class="news-grid">
+          ${articles.map(a => renderCard(a, cat)).join("")}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  container.innerHTML = html || `<div class="loading-wrap"><p style="color:var(--checko-text-secondary)">No articles in this category yet.</p></div>`;
+}
+
+function renderCard(article, cat) {
+  const date = article.publishedAt
+    ? new Date(article.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    : "";
+
+  const imgHtml = article.imageUrl
+    ? `<img class="news-card-img" src="${esc(article.imageUrl)}" alt="" loading="lazy"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    : "";
+  const placeholder = `<div class="news-card-placeholder" style="${article.imageUrl ? "display:none" : ""}">${cat.icon}</div>`;
+
+  // Source type indicator colour
+  const sourceColors = { newsapi: "#1565C0", gnews: "#2E7D32", rss: "#6A1B9A" };
+  const dotColor = sourceColors[article.sourceType] || "#666";
+
+  return `
+    <div class="news-card">
+      ${imgHtml}${placeholder}
+      <div class="news-card-body">
+        <span class="news-card-cat">${cat.icon} ${esc(cat.label)}</span>
+        <div class="news-card-title">${esc(article.title)}</div>
+        <div class="news-card-desc">${esc((article.description || "").slice(0, 180))}${(article.description || "").length > 180 ? "…" : ""}</div>
+        <div class="news-card-footer">
+          <span class="news-card-meta">
+            <span class="source-dot" style="background:${dotColor}" title="${esc(article.sourceType || '')}"></span>
+            ${esc(article.source || "")} · ${date}
+          </span>
+          <a href="${esc(article.url)}" target="_blank" rel="noopener" class="news-card-link">Read →</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ─────────────────────────────────────────────
+   CATEGORY FILTER
+───────────────────────────────────────────── */
+function filterCat(catId, btn) {
+  activeFilter = catId;
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  renderAllNews();
+  document.getElementById("allNewsContainer").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* ─────────────────────────────────────────────
+   UI HELPERS
+───────────────────────────────────────────── */
+function updateBar(msg) {
+  document.getElementById("updateBar").textContent = msg;
+}
+function updateNav(msg) {
+  document.getElementById("navStatusText").textContent = msg;
+}
+function errorBox(title, body) {
+  return `<div class="error-box"><h3>${esc(title)}</h3><p>${esc(body)}</p></div>`;
+}
+function buildBarMsg() {
+  if (!newsData) return "⚠️ No data.";
+  const t = formatISTTime(newsData.fetchedAt);
+  return `✅ ${newsData.totalArticles} articles curated from NewsAPI, GNews, WIPO, INTERPOL, CBP and more — updated ${t} IST`;
+}
+function formatISTTime(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit", minute: "2-digit",
+    day: "numeric", month: "short"
+  });
+}
+function esc(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+</script>
+</body>
+</html>

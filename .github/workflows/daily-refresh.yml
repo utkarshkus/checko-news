@@ -1,0 +1,54 @@
+name: Daily News Refresh — 6 AM IST
+
+on:
+  # 00:30 UTC = 06:00 AM IST
+  schedule:
+    - cron: "30 0 * * *"
+
+  # Run on every push to main
+  push:
+    branches:
+      - main
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  trigger-netlify-fetch:
+    name: Trigger Netlify News Fetch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate secret is set
+        # [S9] Fail fast if secret is missing rather than sending a bad request
+        run: |
+          if [ -z "${{ secrets.NETLIFY_BUILD_HOOK_URL }}" ]; then
+            echo "❌ NETLIFY_BUILD_HOOK_URL secret is not set."
+            exit 1
+          fi
+
+      - name: Trigger Netlify Build Hook
+        # [S9] --fail: exit non-zero on 4xx/5xx  --silent: suppress response body in logs
+        #      --write-out: still show HTTP status code for debugging
+        run: |
+          echo "Triggering Netlify deploy hook..."
+          HTTP_STATUS=$(curl \
+            --fail \
+            --silent \
+            --show-error \
+            --output /dev/null \
+            --write-out "%{http_code}" \
+            -X POST "${{ secrets.NETLIFY_BUILD_HOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            --data '{"clear_cache":false}')
+          echo "Netlify responded with HTTP $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "❌ Build hook failed with status $HTTP_STATUS"
+            exit 1
+          fi
+          echo "✅ Build hook triggered successfully."
+
+      - name: Log trigger time
+        run: |
+          echo "Triggered at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "           = $(TZ='Asia/Kolkata' date '+%Y-%m-%d %H:%M:%S IST')"

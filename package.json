@@ -1,0 +1,17 @@
+{
+  "name": "checko-news-hub",
+  "version": "1.0.0",
+  "description": "Checko.ai Anti-Counterfeiting Intelligence Hub",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo 'Static site — no build step'"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0",
+    "@netlify/functions": "^2.8.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
