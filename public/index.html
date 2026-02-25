@@ -433,38 +433,43 @@
     /* ════════════════════════════
        NEWS CARDS
     ════════════════════════════ */
+    /* .news-grid styles moved to news-card section above */
+    /* ════════════════════════════
+       NEWS CARD — no images, compact list style
+    ════════════════════════════ */
     .news-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 22px;
-    }
-    .news-card {
-      background: white;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      /* Show first 3 cards (~3 × 110px), rest scrollable */
+      max-height: 330px;
+      overflow-y: auto;
       border: 1px solid var(--checko-border);
       border-radius: var(--card-radius);
-      box-shadow: 0 1px 6px rgba(0,0,0,0.05);
-      overflow: hidden;
+      /* Subtle scroll hint gradient at bottom */
+      -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+      mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+    }
+    /* Remove mask when fully scrolled */
+    .news-grid.scrolled-end {
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
+    .news-grid::-webkit-scrollbar { width: 4px; }
+    .news-grid::-webkit-scrollbar-track { background: transparent; }
+    .news-grid::-webkit-scrollbar-thumb { background: var(--checko-border); border-radius: 2px; }
+    .news-grid::-webkit-scrollbar-thumb:hover { background: var(--checko-teal); }
+
+    .news-card {
+      background: white;
+      border-bottom: 1px solid var(--checko-border);
       display: flex; flex-direction: column;
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      transition: background 0.15s ease;
+      flex-shrink: 0;
     }
-    .news-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-    }
-    .news-card-img {
-      width: 100%;
-      /* [P7] aspect-ratio reserves space before image loads, preventing CLS */
-      aspect-ratio: 16 / 9;
-      object-fit: cover; display: block;
-      background: linear-gradient(135deg, #1B2A4A18, #00BCD425);
-    }
-    .news-card-placeholder {
-      aspect-ratio: 16 / 9; /* [P7] matches img ratio */
-      background: linear-gradient(135deg, #1B2A4A0d, #00BCD418);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 48px;
-    }
-    .news-card-body { padding: 18px; flex: 1; display: flex; flex-direction: column; }
+    .news-card:last-child { border-bottom: none; }
+    .news-card:hover { background: var(--checko-light-bg); }
+    .news-card-body { padding: 14px 16px; flex: 1; display: flex; flex-direction: column; }
     .news-card-cat {
       display: inline-block;
       background: var(--checko-light-bg);
@@ -588,6 +593,19 @@
       gap: 12px; font-size: 13px;
     }
     .footer-bottom a { color: var(--checko-teal); text-decoration: none; }
+
+    /* ════════════════════════════
+       SCROLL HINT
+    ════════════════════════════ */
+    .scroll-hint {
+      text-align: center;
+      font-size: 12px;
+      color: var(--checko-text-secondary);
+      padding: 8px;
+      font-family: var(--font-body);
+      opacity: 0.7;
+      letter-spacing: 0.3px;
+    }
 
     /* ════════════════════════════
        RESPONSIVE
@@ -992,23 +1010,18 @@ function renderAllNews() {
     const articles = newsData.byCategory[cat.id] || [];
     if (!articles.length) return "";
 
-    // Gather unique sources for this category
-    const sourcesSet = new Set(articles.map(a => a.source).filter(Boolean));
-    const sourcesList = [...sourcesSet].slice(0, 4);
-
     return `
       <div class="cat-block" data-cat="${cat.id}">
         <div class="cat-block-header">
           <div class="cat-icon-wrap">${cat.icon}</div>
           <div class="cat-block-title">${cat.label}</div>
           <span class="cat-count-badge">${articles.length}</span>
-          <div class="cat-source-pills">
-            ${sourcesList.map(s => `<span class="source-pill">${esc(s)}</span>`).join("")}
-          </div>
+
         </div>
-        <div class="news-grid">
+        <div class="news-grid" onscroll="onGridScroll(this)">
           ${articles.map(a => renderCard(a, cat)).join("")}
         </div>
+        ${articles.length > 3 ? `<div class="scroll-hint">↕ Scroll to see ${articles.length - 3} more articles</div>` : ""}
       </div>
     `;
   }).join("");
@@ -1021,23 +1034,15 @@ function renderCard(article, cat) {
     ? new Date(article.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
     : "";
 
-  const imgHtml = article.imageUrl
-    ? `<img class="news-card-img" src="${esc(article.imageUrl)}" alt="" loading="lazy"
-          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-    : "";
-  const placeholder = `<div class="news-card-placeholder" style="${article.imageUrl ? "display:none" : ""}">${cat.icon}</div>`;
-
   // Source type indicator colour
   const sourceColors = { newsapi: "#1565C0", gnews: "#2E7D32", rss: "#6A1B9A" };
   const dotColor = sourceColors[article.sourceType] || "#666";
 
   return `
     <div class="news-card">
-      ${imgHtml}${placeholder}
       <div class="news-card-body">
-        <span class="news-card-cat">${cat.icon} ${esc(cat.label)}</span>
         <div class="news-card-title">${esc(article.title)}</div>
-        <div class="news-card-desc">${esc((article.description || "").slice(0, 180))}${(article.description || "").length > 180 ? "…" : ""}</div>
+        <div class="news-card-desc">${esc((article.description || "").slice(0, 160))}${(article.description || "").length > 160 ? "…" : ""}</div>
         <div class="news-card-footer">
           <span class="news-card-meta">
             <span class="source-dot" style="background:${dotColor}" title="${esc(article.sourceType || '')}"></span>
@@ -1048,6 +1053,19 @@ function renderCard(article, cat) {
       </div>
     </div>
   `;
+}
+
+/* ─────────────────────────────────────────────
+   SCROLL HINT HELPER
+───────────────────────────────────────────── */
+function onGridScroll(el) {
+  const atBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 8;
+  el.classList.toggle("scrolled-end", atBottom);
+  // Hide the hint text when user has scrolled
+  const hint = el.nextElementSibling;
+  if (hint && hint.classList.contains("scroll-hint")) {
+    hint.style.display = atBottom || el.scrollTop > 20 ? "none" : "";
+  }
 }
 
 /* ─────────────────────────────────────────────
