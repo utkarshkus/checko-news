@@ -433,43 +433,47 @@
     /* ════════════════════════════
        NEWS CARDS
     ════════════════════════════ */
-    /* .news-grid styles moved to news-card section above */
     /* ════════════════════════════
-       NEWS CARD — no images, compact list style
+       NEWS CARD — horizontal carousel, one card per slot
     ════════════════════════════ */
     .news-grid {
       display: flex;
-      flex-direction: column;
-      gap: 0;
-      /* Show first 3 cards (~3 × 110px), rest scrollable */
-      max-height: 330px;
-      overflow-y: auto;
-      border: 1px solid var(--checko-border);
-      border-radius: var(--card-radius);
-      /* Subtle scroll hint gradient at bottom */
-      -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
-      mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+      flex-direction: row;
+      gap: 16px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 10px; /* space for scrollbar */
+      /* Fade right edge to hint at more cards */
+      -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+      mask-image: linear-gradient(to right, black 85%, transparent 100%);
     }
-    /* Remove mask when fully scrolled */
     .news-grid.scrolled-end {
       -webkit-mask-image: none;
       mask-image: none;
     }
-    .news-grid::-webkit-scrollbar { width: 4px; }
+    .news-grid::-webkit-scrollbar { height: 4px; }
     .news-grid::-webkit-scrollbar-track { background: transparent; }
     .news-grid::-webkit-scrollbar-thumb { background: var(--checko-border); border-radius: 2px; }
     .news-grid::-webkit-scrollbar-thumb:hover { background: var(--checko-teal); }
 
     .news-card {
       background: white;
-      border-bottom: 1px solid var(--checko-border);
+      border: 1px solid var(--checko-border);
+      border-radius: var(--card-radius);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.05);
       display: flex; flex-direction: column;
-      transition: background 0.15s ease;
-      flex-shrink: 0;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      /* Each card takes ~3 cards visible at once */
+      flex: 0 0 300px;
+      scroll-snap-align: start;
     }
-    .news-card:last-child { border-bottom: none; }
-    .news-card:hover { background: var(--checko-light-bg); }
-    .news-card-body { padding: 14px 16px; flex: 1; display: flex; flex-direction: column; }
+    .news-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .news-card-body { padding: 16px; flex: 1; display: flex; flex-direction: column; }
     .news-card-cat {
       display: inline-block;
       background: var(--checko-light-bg);
@@ -613,7 +617,9 @@
     @media (max-width: 768px) {
       .hero h1 { font-size: 28px; }
       .section { padding: 48px 16px; }
-      .ai-picks-grid, .news-grid, .skeleton-grid { grid-template-columns: 1fr; }
+      .ai-picks-grid, .skeleton-grid { grid-template-columns: 1fr; }
+      .news-grid { gap: 12px; }
+      .news-card { flex: 0 0 260px; }
       .nav-label, .nav-divider { display: none; }
       #navStatusText { font-size: 12px; }
       .stat-item { min-width: 120px; }
@@ -1021,7 +1027,7 @@ function renderAllNews() {
         <div class="news-grid" onscroll="onGridScroll(this)">
           ${articles.map(a => renderCard(a, cat)).join("")}
         </div>
-        ${articles.length > 3 ? `<div class="scroll-hint">↕ Scroll to see ${articles.length - 3} more articles</div>` : ""}
+        ${articles.length > 3 ? `<div class="scroll-hint">← Swipe to see ${articles.length - 3} more →</div>` : ""}
       </div>
     `;
   }).join("");
@@ -1059,12 +1065,12 @@ function renderCard(article, cat) {
    SCROLL HINT HELPER
 ───────────────────────────────────────────── */
 function onGridScroll(el) {
-  const atBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 8;
-  el.classList.toggle("scrolled-end", atBottom);
-  // Hide the hint text when user has scrolled
+  const atEnd = el.scrollWidth - el.scrollLeft <= el.clientWidth + 8;
+  el.classList.toggle("scrolled-end", atEnd);
+  // Hide hint once user has started scrolling
   const hint = el.nextElementSibling;
   if (hint && hint.classList.contains("scroll-hint")) {
-    hint.style.display = atBottom || el.scrollTop > 20 ? "none" : "";
+    hint.style.display = el.scrollLeft > 20 ? "none" : "";
   }
 }
 
