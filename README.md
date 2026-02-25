@@ -1,3 +1,6 @@
+#Deploy Status
+[![Netlify Status](https://api.netlify.com/api/v1/badges/d4eaedf7-0646-4ebd-b9c1-c2312179f86d/deploy-status)](https://app.netlify.com/projects/checkonews/deploys)
+
 # Checko Intelligence Hub 🛡️
 
 > Daily AI-curated anti-counterfeiting news aggregator for [Checko.ai](https://checko.ai)
