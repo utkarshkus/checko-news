@@ -36,8 +36,8 @@ const CATEGORIES = [
     gnewsQuery: "counterfeit goods seized",
     // [F2] Direct RSS URLs — no proxy
     rssFeeds: [
-      "https://www.cbp.gov/newsroom/rss-feeds/trade-news",
-      "https://www.interpol.int/en/News-and-Events/News/rss",
+      "https://www.ice.gov/news/releases.xml",          // US ICE — IP crime enforcement
+      "https://www.europol.europa.eu/newsroom/rss",     // Europol operations
     ],
   },
   {
@@ -65,7 +65,7 @@ const CATEGORIES = [
     label: "Authentication Technology",
     icon: "💡",
     newsApiQuery: "QR code NFC RFID PUF authentication product verification technology",
-    gnewsQuery: "anti-counterfeiting technology authentication NFC",
+    gnewsQuery: "product authentication technology counterfeit",
     rssFeeds: [
       "https://www.technologyreview.com/feed/",
     ],
@@ -77,7 +77,8 @@ const CATEGORIES = [
     newsApiQuery: "intellectual property trademark counterfeit regulation enforcement WTO WIPO",
     gnewsQuery: "intellectual property law counterfeit regulation",
     rssFeeds: [
-      "https://www.wipo.int/pressroom/en/articles/rss.xml",
+      "https://www.wipo.int/pressroom/en/rss.xml",      // WIPO pressroom (corrected path)
+      "https://www.iam-media.com/rss.xml",              // IAM — IP management
     ],
   },
   {
@@ -87,7 +88,8 @@ const CATEGORIES = [
     newsApiQuery: "luxury goods fake counterfeit pharma medicine retail fashion",
     gnewsQuery: "counterfeit luxury pharma fake medicines",
     rssFeeds: [
-      "https://www.businessoffashion.com/rss",
+      "https://www.thefashionlaw.com/feed/",            // Fashion Law — IP & counterfeiting
+      "https://wwd.com/feed/",                          // WWD — luxury & fashion industry
     ],
   },
 ];
