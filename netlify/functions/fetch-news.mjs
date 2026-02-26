@@ -346,35 +346,100 @@ async function fetchAllCategories() {
 
 // ─── AI PICKS ────────────────────────────────────────────────────────────────
 
+// Keywords that indicate an article is genuinely relevant to anti-counterfeiting.
+// Used to pre-score articles before sending to AI, ensuring the pool is high-quality.
+const RELEVANCE_KEYWORDS = [
+  // Core topic
+  "counterfeit", "fake", "spurious", "duplicate", "imitation", "knockoff", "piracy", "pirated",
+  "forgery", "forged", "adulterated", "substandard",
+  // Enforcement
+  "seized", "raid", "bust", "arrest", "crackdown", "enforcement", "confiscated", "nabbed",
+  "DGGI", "customs", "CDSCO", "FSSAI", "IPR", "trademark infringement",
+  // Brand & IP
+  "brand protection", "intellectual property", "trademark", "patent", "copyright",
+  "anti-counterfeiting", "authentication", "verification", "traceability",
+  // Technology
+  "QR code", "NFC", "RFID", "hologram", "PUF", "blockchain", "serialisation", "track and trace",
+  // Sectors
+  "pharma", "medicine", "drug", "luxury", "FMCG", "agri", "pesticide", "fertiliser",
+  // India-specific
+  "India", "Indian",
+];
+
+function scoreArticle(article) {
+  const text = `${article.title} ${article.description}`.toLowerCase();
+  return RELEVANCE_KEYWORDS.reduce((score, kw) => {
+    return score + (text.includes(kw.toLowerCase()) ? 1 : 0);
+  }, 0);
+}
+
 async function selectAIPicks(allArticles) {
   if (!OPENAI_KEY) { console.warn("OPENAI_API_KEY not set."); return []; }
 
-  const pool = [...allArticles]
-    .filter((a) => a.publishedAt)
-    .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
+  // [FIX 3] Guarantee category diversity: take top 4 by relevance score from each category
+  // then sort the combined pool by score DESC and take top 30
+  const scoredByCategory = {};
+  for (const article of allArticles) {
+    const cat = article.categoryId;
+    if (!scoredByCategory[cat]) scoredByCategory[cat] = [];
+    scoredByCategory[cat].push({ ...article, _score: scoreArticle(article) });
+  }
+
+  const candidatePool = [];
+  for (const cat of Object.keys(scoredByCategory)) {
+    const top = scoredByCategory[cat]
+      .filter((a) => a.publishedAt)
+      .sort((a, b) => b._score - a._score || new Date(b.publishedAt) - new Date(a.publishedAt))
+      .slice(0, 4); // top 4 per category
+    candidatePool.push(...top);
+  }
+
+  // [FIX 1] Sort combined pool by relevance score, break ties by recency
+  const pool = candidatePool
+    .sort((a, b) => b._score - a._score || new Date(b.publishedAt) - new Date(a.publishedAt))
     .slice(0, 30);
 
   if (!pool.length) return [];
 
+  console.log(`🎯 Pool relevance scores: min=${pool.at(-1)._score} max=${pool[0]._score} avg=${(pool.reduce((s,a)=>s+a._score,0)/pool.length).toFixed(1)}`);
+
+  // [FIX 5] Send up to 400 chars of description so AI has real context
   const articleList = pool.map((a, i) =>
-    `${i + 1}. [${a.categoryLabel}] ${a.title}\n   Source: ${a.source}\n   Summary: ${a.description.slice(0, 200)}`
+    `${i + 1}. [${a.categoryLabel}] ${a.title}\n   Source: ${a.source} | Score: ${a._score}\n   ${a.description.slice(0, 400)}`
   ).join("\n\n");
 
-  const prompt = `You are an expert analyst in anti-counterfeiting, brand protection, and supply chain security for Checko.ai — a company building India's first 100% copy-proof, tamper-proof labels using 3D PUF (Physically Unclonable Functions) technology, founded at IIT Kanpur.
+  // [FIX 6] Split into system + user messages for better gpt-4o-mini performance
+  const systemPrompt = `You are the Chief Intelligence Analyst at Checko.ai — India's anti-counterfeiting company that builds 100% copy-proof, tamper-proof labels using 3D PUF (Physically Unclonable Functions) technology, founded at IIT Kanpur.
 
-Select the TOP 3 most impactful and relevant stories for Checko's Indian audience: brand owners, IP professionals, customs regulators, FSSAI/drug enforcement officers, and Indian consumers fighting counterfeit goods.
+Your job is to curate the 3 most important news stories each day for Checko's audience:
+- Brand owners and manufacturers fighting fakes in India
+- IP lawyers and trademark professionals
+- Customs officers, DGGI, FSSAI, and drug enforcement agencies
+- Retail and pharma companies protecting their supply chains
+- Investors and policy makers in the anti-counterfeiting space
 
-For each pick:
-- articleIndex: 1-based index (must be between 1 and ${pool.length})
-- headline: rewritten headline (max 120 chars)
-- summary: 2-sentence plain-English summary (max 300 chars)
-- whyItMatters: 1 sentence on relevance to India's anti-counterfeiting landscape (max 200 chars)
-- category: short label e.g. "Pharma Counterfeiting", "IP Enforcement India"
+STRICT SELECTION RULES:
+1. Only pick articles that are DIRECTLY about: counterfeiting, fake goods, IP enforcement, brand protection, authentication technology, supply chain security, trademark/patent law, or product fraud.
+2. REJECT articles about general business news, stock markets, earnings, macroeconomics, or politics UNLESS they have a clear and specific connection to counterfeiting or IP protection.
+3. Prioritise articles with a specific India angle — raids, court rulings, Indian brands, Indian regulatory action.
+4. If fewer than 3 articles meet the relevance bar, return only the ones that do. Never force a connection.
+5. The "whyItMatters" field must cite a SPECIFIC implication — never write generic statements like "this affects brand owners."`;
 
-Respond ONLY with valid compact JSON:
+  const userPrompt = `From the articles below, select up to 3 that best meet your selection rules. Each article has a relevance Score (higher = more on-topic).
+
+For each selected article return:
+- articleIndex: the 1-based number from the list (must be between 1 and ${pool.length})
+- headline: sharp, specific rewritten headline (max 120 chars) — avoid clickbait
+- summary: exactly 2 sentences covering what happened and who is affected (max 300 chars)
+- whyItMatters: 1 specific sentence — cite a concrete implication for brand owners, enforcers, or consumers in India (max 200 chars)
+- category: precise topic tag e.g. "Pharma Raid India", "Trademark Ruling", "QR Authentication"
+
+[FIX 4] If an article is not genuinely about counterfeiting or IP protection, do NOT include it.
+
+Respond ONLY with valid compact JSON, no markdown:
 {"picks":[{"articleIndex":1,"headline":"...","summary":"...","whyItMatters":"...","category":"..."}]}
 
-Articles:
+ARTICLES:
 ${articleList}`;
 
   const result = await safeFetchJSON("https://api.openai.com/v1/chat/completions", {
@@ -382,9 +447,13 @@ ${articleList}`;
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_KEY}` },
     body: JSON.stringify({
       model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-      max_tokens: 900,
+      // [FIX 6] System + user message split
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user",   content: userPrompt   },
+      ],
+      temperature: 0.2,  // lower = more deterministic, less hallucination
+      max_tokens: 1000,  // slightly more room for 3 detailed picks
     }),
   });
 
