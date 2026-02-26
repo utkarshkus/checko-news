@@ -1,95 +1,93 @@
 /**
  * Netlify Scheduled Function — runs daily at 6:00 AM IST (00:30 UTC)
- *
- * Fixes applied in this version:
- *  [F1] GNews 429 — sequential calls with 1s delay instead of parallel
- *  [F2] RSS 422 — parse RSS feeds directly (no rss2json proxy needed)
- *  [F3] Blobs MissingBlobsEnvironmentError — pass siteID + token explicitly
+ * Geography: INDIA-FOCUSED
+ * Sources: NewsAPI (India queries), GNews (India queries), Indian RSS feeds
  */
 
 import { schedule } from "@netlify/functions";
 import { getStore }  from "@netlify/blobs";
 
 // ─── ENV ─────────────────────────────────────────────────────────────────────
-const NEWS_API_KEY  = process.env.NEWS_API_KEY;
-const GNEWS_API_KEY = process.env.GNEWS_API_KEY;
-const OPENAI_KEY    = process.env.OPENAI_API_KEY;
-// [F3] Blobs needs these when invoked outside of the normal build/schedule context
+const NEWS_API_KEY    = process.env.NEWS_API_KEY;
+const GNEWS_API_KEY   = process.env.GNEWS_API_KEY;
+const OPENAI_KEY      = process.env.OPENAI_API_KEY;
 const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
 const NETLIFY_TOKEN   = process.env.NETLIFY_TOKEN   || process.env.TOKEN;
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const FETCH_TIMEOUT_MS    = 12_000;
-const MAX_RESPONSE_BYTES  = 5_242_880; // 5 MB
-const MAX_TITLE_LEN       = 300;
-const MAX_DESC_LEN        = 500;
-// [F1] Delay between GNews requests to avoid 429 on free tier
-const GNEWS_DELAY_MS      = 1_200;
+const FETCH_TIMEOUT_MS   = 12_000;
+const MAX_RESPONSE_BYTES = 5_242_880; // 5 MB
+const MAX_TITLE_LEN      = 300;
+const MAX_DESC_LEN       = 500;
+const GNEWS_DELAY_MS     = 1_200; // avoid 429 on free tier
 
-// ─── CATEGORIES ──────────────────────────────────────────────────────────────
+// ─── INDIA-FOCUSED CATEGORIES ────────────────────────────────────────────────
 const CATEGORIES = [
   {
     id: "counterfeiting",
     label: "Counterfeiting & Seizures",
     icon: "⚠️",
-    newsApiQuery: "counterfeiting fake goods seized customs",
-    gnewsQuery: "counterfeit goods seized",
-    // [F2] Direct RSS URLs — no proxy
+    // NewsAPI: India-specific enforcement, customs, DGGI raids
+    newsApiQuery: "counterfeit fake goods seized India customs DGGI raid",
+    gnewsQuery: "counterfeit seized India customs",
     rssFeeds: [
-      "https://www.ice.gov/news/releases.xml",          // US ICE — IP crime enforcement
-      "https://www.europol.europa.eu/newsroom/rss",     // Europol operations
+      "https://economictimes.indiatimes.com/rssfeedstopstories.cms",   // Economic Times
+      "https://www.business-standard.com/rss/home_page_top_stories.rss", // Business Standard
     ],
   },
   {
     id: "brand-protection",
     label: "Brand Protection",
     icon: "🛡️",
-    newsApiQuery: "brand protection anti-counterfeiting authentication label trademark",
-    gnewsQuery: "brand protection trademark infringement",
+    newsApiQuery: "brand protection trademark infringement India anti-counterfeiting",
+    gnewsQuery: "brand protection trademark India infringement",
     rssFeeds: [
-      "https://ipwatchdog.com/feed/",
+      "https://spicyip.com/feed",          // SpicyIP — India's #1 IP law blog
+      "https://www.barandbench.com/feed",  // Bar & Bench — Indian legal news
     ],
   },
   {
     id: "supply-chain",
     label: "Supply Chain Security",
     icon: "🔗",
-    newsApiQuery: "supply chain integrity traceability serialisation blockchain",
-    gnewsQuery: "supply chain traceability product authentication",
+    newsApiQuery: "supply chain India traceability serialisation product authentication",
+    gnewsQuery: "supply chain India traceability authentication",
     rssFeeds: [
-      "https://www.supplychaindive.com/feeds/news/",
+      "https://www.livemint.com/rss/industry",                          // Mint Industry
+      "https://www.thehindubusinessline.com/economy/?service=rss",      // Hindu BusinessLine
     ],
   },
   {
     id: "technology",
     label: "Authentication Technology",
     icon: "💡",
-    newsApiQuery: "QR code NFC RFID PUF authentication product verification technology",
-    gnewsQuery: "product authentication technology counterfeit",
+    newsApiQuery: "QR code NFC RFID authentication India startup product verification",
+    gnewsQuery: "authentication technology India QR NFC startup",
     rssFeeds: [
-      "https://www.technologyreview.com/feed/",
+      "https://inc42.com/feed/",     // Inc42 — Indian tech & startups
+      "https://yourstory.com/feed",  // YourStory — Indian entrepreneurship
     ],
   },
   {
     id: "regulation",
     label: "Regulation & IP",
     icon: "⚖️",
-    newsApiQuery: "intellectual property trademark counterfeit regulation enforcement WTO WIPO",
-    gnewsQuery: "intellectual property law counterfeit regulation",
+    newsApiQuery: "intellectual property India trademark patent enforcement IPAB court",
+    gnewsQuery: "intellectual property India trademark patent law",
     rssFeeds: [
-      "https://www.wipo.int/pressroom/en/rss.xml",      // WIPO pressroom (corrected path)
-      "https://www.iam-media.com/rss.xml",              // IAM — IP management
+      "https://spicyip.com/feed",                                        // SpicyIP (IP-focused)
+      "https://www.livelaw.in/feed",                                     // Live Law — Indian courts
     ],
   },
   {
     id: "luxury",
     label: "Luxury, Pharma & Retail",
     icon: "💎",
-    newsApiQuery: "luxury goods fake counterfeit pharma medicine retail fashion",
-    gnewsQuery: "counterfeit luxury pharma fake medicines",
+    newsApiQuery: "fake counterfeit medicines pharma luxury retail India FSSAI drug",
+    gnewsQuery: "counterfeit medicine pharma fake luxury India",
     rssFeeds: [
-      "https://www.thefashionlaw.com/feed/",            // Fashion Law — IP & counterfeiting
-      "https://wwd.com/feed/",                          // WWD — luxury & fashion industry
+      "https://www.financialexpress.com/feed/",   // Financial Express
+      "https://www.moneycontrol.com/rss/results.xml", // Moneycontrol
     ],
   },
 ];
@@ -104,19 +102,33 @@ function sanitiseImageUrl(raw) {
   } catch { return null; }
 }
 
+function decodeEntities(s) {
+  return s
+    .replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"').replace(/&#039;/gi, "'").replace(/&nbsp;/gi, " ")
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(Number(c)));
+}
+
 function sanitiseText(raw, maxLen = MAX_DESC_LEN) {
   if (!raw || typeof raw !== "string") return "";
   let s = raw;
+  // Decode entities FIRST so &lt;figure&gt; becomes <figure> before stripping
+  s = decodeEntities(s);
   s = s.replace(/<[^>]*>/g, " ");
-  s = s
-    .replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"').replace(/&#039;/gi, "'").replace(/&nbsp;/gi, " ")
-    .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(Number(c)));
+  // Decode and strip again for double-encoded content
+  s = decodeEntities(s);
+  s = s.replace(/<[^>]*>/g, " ");
   s = s.replace(/\b(javascript|vbscript|data):/gi, "");
-  return s.replace(/\s+/g, " ").trim().slice(0, maxLen);
+  s = s.replace(/\s+/g, " ").trim();
+  // Last resort: if URL/attribute fragments remain, strip them
+  if (s.includes("src=") || s.includes("href=") || s.includes("://")) {
+    s = s.replace(/\S*[:=/]\S*/g, "").replace(/\s+/g, " ").trim();
+  }
+  return s.slice(0, maxLen);
 }
 
-// ─── SAFE FETCH (timeout + size cap) ────────────────────────────────────────
+// ─── SAFE FETCH ──────────────────────────────────────────────────────────────
 
 async function safeFetch(url, options = {}) {
   const controller = new AbortController();
@@ -148,21 +160,18 @@ async function safeFetchJSON(url, options = {}) {
   }
 }
 
-// ─── [F2] NATIVE RSS PARSER ──────────────────────────────────────────────────
-// Parses RSS/Atom XML directly — no third-party proxy required.
+// ─── NATIVE RSS PARSER ───────────────────────────────────────────────────────
 
 function parseRSS(xml, feedUrl) {
   const items = [];
   let feedTitle = "";
 
-  // Extract feed title
-  const chanTitle = xml.match(/<channel[^>]*>[\s\S]*?<title[^>]*>([\s\S]*?)<\/title>/i);
-  if (chanTitle) feedTitle = sanitiseText(chanTitle[1], 80);
+  const chanTitle = xml.match(/<channel[^>]*>[\s\S]*?<title[^>]*>(?:<!\[CDATA\[([\s\S]*?)\]\]>|([\s\S]*?))<\/title>/i);
+  if (chanTitle) feedTitle = sanitiseText(chanTitle[1] || chanTitle[2], 80);
   if (!feedTitle) {
     try { feedTitle = new URL(feedUrl).hostname; } catch { feedTitle = feedUrl; }
   }
 
-  // Match <item> or <entry> blocks (RSS 2.0 and Atom)
   const itemRegex = /<(?:item|entry)[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi;
   let match;
 
@@ -170,28 +179,27 @@ function parseRSS(xml, feedUrl) {
     const block = match[1];
 
     const getTag = (tag) => {
-      // Handle CDATA and plain text
       const re = new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>|([\\s\\S]*?))<\\/${tag}>`, "i");
       const m = block.match(re);
       return m ? (m[1] || m[2] || "").trim() : "";
     };
-
     const getAttr = (tag, attr) => {
-      const re = new RegExp(`<${tag}[^>]*${attr}="([^"]*)"`, "i");
+      const re = new RegExp(`<${tag}[^>]*\\s${attr}="([^"]*)"`, "i");
       const m = block.match(re);
       return m ? m[1].trim() : "";
     };
 
     const title       = sanitiseText(getTag("title"), MAX_TITLE_LEN);
     const link        = getTag("link") || getAttr("link", "href") || getTag("id");
-    const description = sanitiseText(getTag("description") || getTag("summary") || getTag("content"), MAX_DESC_LEN);
-    const pubDate     = getTag("pubDate") || getTag("published") || getTag("updated") || "";
-    const rawImg      = getAttr("enclosure", "url") || getAttr("media:content", "url") || "";
-    const imageUrl    = sanitiseImageUrl(rawImg);
+    const description = sanitiseText(
+      getTag("description") || getTag("summary") || getTag("content:encoded") || getTag("content"),
+      MAX_DESC_LEN
+    );
+    const pubDate  = getTag("pubDate") || getTag("published") || getTag("updated") || "";
+    const rawImg   = getAttr("enclosure", "url") || getAttr("media:content", "url") || "";
+    const imageUrl = sanitiseImageUrl(rawImg);
 
     if (!title || !link) continue;
-
-    // Validate link is a real URL
     try { new URL(link); } catch { continue; }
 
     let publishedAt = null;
@@ -208,21 +216,15 @@ function parseRSS(xml, feedUrl) {
 
 async function fetchRSSFeed(feedUrl) {
   const result = await safeFetch(feedUrl, {
-    headers: { "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*" }
+    headers: { "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
+               "User-Agent": "Checko-NewsBot/1.0" }
   });
-  if (!result.ok) {
-    console.error(`RSS [${feedUrl}]:`, result.error);
-    return [];
-  }
-  try {
-    return parseRSS(result.text, feedUrl);
-  } catch (err) {
-    console.error(`RSS parse [${feedUrl}]:`, err.message);
-    return [];
-  }
+  if (!result.ok) { console.error(`RSS [${feedUrl}]:`, result.error); return []; }
+  try { return parseRSS(result.text, feedUrl); }
+  catch (err) { console.error(`RSS parse [${feedUrl}]:`, err.message); return []; }
 }
 
-// ─── NEWS API ────────────────────────────────────────────────────────────────
+// ─── NEWS API (India domain filter) ─────────────────────────────────────────
 
 async function fetchNewsAPI(query) {
   if (!NEWS_API_KEY) return [];
@@ -231,7 +233,13 @@ async function fetchNewsAPI(query) {
   url.searchParams.set("language", "en");
   url.searchParams.set("sortBy", "publishedAt");
   url.searchParams.set("pageSize", "10");
+  // Restrict to Indian news domains
+  url.searchParams.set("domains",
+    "timesofindia.indiatimes.com,economictimes.indiatimes.com,business-standard.com," +
+    "livemint.com,thehindu.com,hindustantimes.com,financialexpress.com,ndtv.com,moneycontrol.com"
+  );
   url.searchParams.set("apiKey", NEWS_API_KEY);
+
   const result = await safeFetchJSON(url.toString());
   if (!result.ok) { console.error(`NewsAPI [${query}]:`, result.error); return []; }
   return (result.data.articles || [])
@@ -248,7 +256,8 @@ async function fetchNewsAPI(query) {
     }));
 }
 
-// [F1] GNews sequential fetcher with delay to respect free-tier rate limits
+// ─── GNEWS (India country filter) ───────────────────────────────────────────
+
 async function fetchAllGNews(queries) {
   if (!GNEWS_API_KEY) return {};
   const results = {};
@@ -256,8 +265,10 @@ async function fetchAllGNews(queries) {
     const url = new URL("https://gnews.io/api/v4/search");
     url.searchParams.set("q", query);
     url.searchParams.set("lang", "en");
-    url.searchParams.set("max", "5"); // reduced from 10 to be kinder to rate limits
+    url.searchParams.set("country", "in"); // India only
+    url.searchParams.set("max", "5");
     url.searchParams.set("token", GNEWS_API_KEY);
+
     const result = await safeFetchJSON(url.toString());
     if (!result.ok) {
       console.error(`GNews [${query}]:`, result.error);
@@ -276,7 +287,6 @@ async function fetchAllGNews(queries) {
           sourceType: "gnews",
         }));
     }
-    // [F1] Wait between each GNews call to avoid 429
     await new Promise((r) => setTimeout(r, GNEWS_DELAY_MS));
   }
   return results;
@@ -285,11 +295,9 @@ async function fetchAllGNews(queries) {
 // ─── PARALLEL CATEGORY FETCH ─────────────────────────────────────────────────
 
 async function fetchAllCategories() {
-  // [F1] Fetch all GNews queries sequentially first (rate-limit safe)
-  const gnewsQueries  = CATEGORIES.map((c) => c.gnewsQuery);
-  const gnewsByQuery  = await fetchAllGNews(gnewsQueries);
+  const gnewsQueries = CATEGORIES.map((c) => c.gnewsQuery);
+  const gnewsByQuery = await fetchAllGNews(gnewsQueries);
 
-  // NewsAPI + RSS can still run in parallel (no shared rate limits)
   const results = await Promise.allSettled(
     CATEGORIES.map(async (cat) => {
       const [newsApiResults, ...rssResults] = await Promise.all([
@@ -327,7 +335,6 @@ async function fetchAllCategories() {
     allArticles.push(...articles);
   }
 
-  // Global dedupe
   const seen = new Set();
   const dedupedAll = allArticles.filter((a) => {
     if (seen.has(a.id)) return false;
@@ -353,16 +360,16 @@ async function selectAIPicks(allArticles) {
     `${i + 1}. [${a.categoryLabel}] ${a.title}\n   Source: ${a.source}\n   Summary: ${a.description.slice(0, 200)}`
   ).join("\n\n");
 
-  const prompt = `You are an expert analyst in anti-counterfeiting, brand protection, and supply chain security for Checko.ai — a company building the world's first 100% copy-proof, tamper-proof labels using 3D PUF technology, founded at IIT Kanpur.
+  const prompt = `You are an expert analyst in anti-counterfeiting, brand protection, and supply chain security for Checko.ai — a company building India's first 100% copy-proof, tamper-proof labels using 3D PUF (Physically Unclonable Functions) technology, founded at IIT Kanpur.
 
-Select the TOP 3 most impactful and relevant stories for brand owners, IP professionals, customs regulators, and consumers fighting counterfeit goods.
+Select the TOP 3 most impactful and relevant stories for Checko's Indian audience: brand owners, IP professionals, customs regulators, FSSAI/drug enforcement officers, and Indian consumers fighting counterfeit goods.
 
 For each pick:
 - articleIndex: 1-based index (must be between 1 and ${pool.length})
 - headline: rewritten headline (max 120 chars)
-- summary: 2-sentence summary (max 300 chars)
-- whyItMatters: 1 sentence relevance to anti-counterfeiting (max 200 chars)
-- category: short label e.g. "Pharma Counterfeiting"
+- summary: 2-sentence plain-English summary (max 300 chars)
+- whyItMatters: 1 sentence on relevance to India's anti-counterfeiting landscape (max 200 chars)
+- category: short label e.g. "Pharma Counterfeiting", "IP Enforcement India"
 
 Respond ONLY with valid compact JSON:
 {"picks":[{"articleIndex":1,"headline":"...","summary":"...","whyItMatters":"...","category":"..."}]}
@@ -393,7 +400,7 @@ ${articleList}`;
     return parsed.picks.slice(0, 3).map((pick) => {
       const idx = Number(pick.articleIndex);
       if (!Number.isInteger(idx) || idx < 1 || idx > pool.length) {
-        console.warn(`Invalid articleIndex from AI: ${pick.articleIndex}`);
+        console.warn(`Invalid articleIndex: ${pick.articleIndex}`);
         return null;
       }
       return {
@@ -413,9 +420,9 @@ ${articleList}`;
 
 // ─── MAIN HANDLER ────────────────────────────────────────────────────────────
 
-const handler = schedule("30 0 * * *", async (event, context) => {
+const handler = schedule("30 0 * * *", async () => {
   const startMs = Date.now();
-  console.log("🔄 Checko news fetch starting…");
+  console.log("🔄 Checko news fetch starting (India-focused)…");
 
   const { byCategory, dedupedAll } = await fetchAllCategories();
   console.log(`📰 Fetched ${dedupedAll.length} articles across ${Object.keys(byCategory).length} categories`);
@@ -431,7 +438,6 @@ const handler = schedule("30 0 * * *", async (event, context) => {
     byCategory,
   };
 
-  // [F3] Pass siteID + token explicitly so Blobs works in all invocation contexts
   const storeOptions = {};
   if (NETLIFY_SITE_ID && NETLIFY_TOKEN) {
     storeOptions.siteID = NETLIFY_SITE_ID;
