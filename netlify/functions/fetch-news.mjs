@@ -346,31 +346,50 @@ async function fetchAllCategories() {
 
 // ─── AI PICKS ────────────────────────────────────────────────────────────────
 
-// Keywords that indicate an article is genuinely relevant to anti-counterfeiting.
-// Used to pre-score articles before sending to AI, ensuring the pool is high-quality.
-const RELEVANCE_KEYWORDS = [
-  // Core topic
-  "counterfeit", "fake", "spurious", "duplicate", "imitation", "knockoff", "piracy", "pirated",
-  "forgery", "forged", "adulterated", "substandard",
-  // Enforcement
-  "seized", "raid", "bust", "arrest", "crackdown", "enforcement", "confiscated", "nabbed",
-  "DGGI", "customs", "CDSCO", "FSSAI", "IPR", "trademark infringement",
-  // Brand & IP
-  "brand protection", "intellectual property", "trademark", "patent", "copyright",
-  "anti-counterfeiting", "authentication", "verification", "traceability",
-  // Technology
-  "QR code", "NFC", "RFID", "hologram", "PUF", "blockchain", "serialisation", "track and trace",
-  // Sectors
-  "pharma", "medicine", "drug", "luxury", "FMCG", "agri", "pesticide", "fertiliser",
-  // India-specific
-  "India", "Indian",
-];
+// Keywords that indicate an article is genuinely relevant to Checko's core business.
+// We weight direct anti-counterfeiting/packaging-auth use cases higher than generic mentions.
+const SIGNALS = {
+  mustHave: [
+    "counterfeit", "counterfeiting", "fake goods", "spurious", "adulterated",
+    "product fraud", "brand protection", "anti-counterfeiting", "trademark infringement",
+    "ip enforcement", "authentication", "traceability", "track and trace",
+  ],
+  highIntent: [
+    "raid", "seized", "crackdown", "confiscated", "arrest", "customs", "dggi", "fssai", "cdsco",
+    "qr code", "serialization", "serialisation", "rfid", "nfc", "hologram", "tamper-proof", "puf",
+    "packaging", "label", "supply chain security", "batch trace", "provenance",
+  ],
+  checkoFit: [
+    "pharma", "medicine", "drug", "fmcg", "agri", "pesticide", "fertiliser",
+    "consumer safety", "recall", "grey market", "diversion", "parallel trade",
+    "india", "indian",
+  ],
+  deprioritise: [
+    "stock market", "share price", "quarterly earnings", "box office", "celebrity",
+    "video piracy", "movie piracy", "music piracy", "gaming piracy",
+  ],
+};
+
+function countMatches(text, keywords) {
+  return keywords.reduce((count, kw) => count + (text.includes(kw) ? 1 : 0), 0);
+}
 
 function scoreArticle(article) {
-  const text = `${article.title} ${article.description}`.toLowerCase();
-  return RELEVANCE_KEYWORDS.reduce((score, kw) => {
-    return score + (text.includes(kw.toLowerCase()) ? 1 : 0);
-  }, 0);
+  const title = `${article.title || ""}`.toLowerCase();
+  const description = `${article.description || ""}`.toLowerCase();
+  const combined = `${title} ${description}`;
+
+  const mustHave = countMatches(combined, SIGNALS.mustHave);
+  const highIntent = countMatches(combined, SIGNALS.highIntent);
+  const checkoFit = countMatches(combined, SIGNALS.checkoFit);
+  const deprioritise = countMatches(combined, SIGNALS.deprioritise);
+
+  // Give title hits extra influence because they typically capture the core event.
+  const titleBonus = (countMatches(title, SIGNALS.mustHave) * 2) + countMatches(title, SIGNALS.highIntent);
+  const rawScore = (mustHave * 4) + (highIntent * 2) + checkoFit + titleBonus - (deprioritise * 3);
+
+  // Hard floor: without at least one direct anti-counterfeiting/IP signal, it is usually noise.
+  return mustHave === 0 ? rawScore - 5 : rawScore;
 }
 
 async function selectAIPicks(allArticles) {
@@ -396,6 +415,7 @@ async function selectAIPicks(allArticles) {
 
   // [FIX 1] Sort combined pool by relevance score, break ties by recency
   const pool = candidatePool
+    .filter((a) => a._score >= 3)
     .sort((a, b) => b._score - a._score || new Date(b.publishedAt) - new Date(a.publishedAt))
     .slice(0, 30);
 
@@ -422,8 +442,10 @@ STRICT SELECTION RULES:
 1. Only pick articles that are DIRECTLY about: counterfeiting, fake goods, IP enforcement, brand protection, authentication technology, supply chain security, trademark/patent law, or product fraud.
 2. REJECT articles about general business news, stock markets, earnings, macroeconomics, or politics UNLESS they have a clear and specific connection to counterfeiting or IP protection.
 3. Prioritise articles with a specific India angle — raids, court rulings, Indian brands, Indian regulatory action.
-4. If fewer than 3 articles meet the relevance bar, return only the ones that do. Never force a connection.
-5. The "whyItMatters" field must cite a SPECIFIC implication — never write generic statements like "this affects brand owners."`;
+4. Heavily prioritise developments tied to physical product authentication and packaging integrity (labels, QR/NFC/RFID, serialization, tamper-proofing, supply-chain traceability).
+5. Reject stories where "piracy" means digital media piracy (movies/music/software) unless physical product counterfeiting is explicitly discussed.
+6. If fewer than 3 articles meet the relevance bar, return only the ones that do. Never force a connection.
+7. The "whyItMatters" field must cite a SPECIFIC implication — never write generic statements like "this affects brand owners."`;
 
   const userPrompt = `From the articles below, select up to 3 that best meet your selection rules. Each article has a relevance Score (higher = more on-topic).
 
@@ -433,6 +455,7 @@ For each selected article return:
 - summary: exactly 2 sentences covering what happened and who is affected (max 300 chars)
 - whyItMatters: 1 specific sentence — cite a concrete implication for brand owners, enforcers, or consumers in India (max 200 chars)
 - category: precise topic tag e.g. "Pharma Raid India", "Trademark Ruling", "QR Authentication"
+- prefer stories with concrete operational outcomes: seizure size, enforcement action, policy change, authentication rollout, or legal precedent
 
 [FIX 4] If an article is not genuinely about counterfeiting or IP protection, do NOT include it.
 
